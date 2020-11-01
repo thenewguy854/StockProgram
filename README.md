@@ -11,11 +11,14 @@ Goal
 Requirements Specification
 
           Historical data will be pulled from an internet source and stored inside of a database. From there, 
-          the user will be able to select a company stock ticker from a given list. The user will be shown historical chart data, the most recent news, and a prediction of a price in the near future.
+          the user will be able to select a company stock ticker from a given list. The user will be shown 
+          historical chart data, the most recent news, and a prediction of a price in the near future.
 
 System Specifications
 
-            Hardware specifications involve a standard PC. The project will most likely be coded in Python. However, this has not been fully decided. If so, software specifications will require Python be installed with all required modules. Other languages in mind are Java and C++. Java will require a recent version of JDK.
+            Hardware specifications involve a standard PC. The project will most likely be coded in Python. 
+            However, this has not been fully decided. If so, software specifications will require Python be
+            installed with all required modules. Other languages in mind are Java and C++. Java will require a recent version of JDK.
 
 Project Milestones
 
