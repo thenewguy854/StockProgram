@@ -10,7 +10,8 @@ Goal
 
 Requirements Specification
 
-          Historical data will be pulled from an internet source and stored inside of a database. From there, the user will be able to select a company stock ticker from a given list. The user will be shown historical chart data, the most recent news, and a prediction of a price in the near future.
+          Historical data will be pulled from an internet source and stored inside of a database. From there, 
+          the user will be able to select a company stock ticker from a given list. The user will be shown historical chart data, the most recent news, and a prediction of a price in the near future.
 
 System Specifications
 
