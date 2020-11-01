@@ -6,7 +6,8 @@ Team Members
 
 Goal
 
-          The goal of this project is to use machine learning to predict future prices of technology stocks.
+          The goal of this project is to use machine learning to predict 
+          future prices of technology stocks.
 
 Requirements Specification
 
