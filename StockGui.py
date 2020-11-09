@@ -4,7 +4,6 @@ from PyQt5.QtWidgets import QPushButton, QTableWidget, QScrollArea
 from PyQt5.QtWidgets import QGridLayout, QVBoxLayout, QHBoxLayout
 from PyQt5.QtWidgets import QGraphicsView
 from PyQt5.QtChart import *
-#from PySide2.QtCharts import QtCharts
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5 import QtCore
 from YahooStockGrab import getYahooData
