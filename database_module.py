@@ -3,6 +3,7 @@ from sqlite3 import Error
 import pandas as pd
 from datetime import datetime
 import sys
+from YahooStockGrab import getYahooData
 
 # The purpose of this module is to communicate and exchange data with SQLite3 databse
 
@@ -74,6 +75,27 @@ def delete_table(conn, ticker):
     cur = conn.cursor()
     cur.execute("DROP TABLE " + ticker)
 
+# takes a dataframe from YahooStockGrab.py
+# and inserts it into the database
+def insert_df(conn, ticker, data):
+
+    # create the table if it doesn't exist
+    create_table(conn, str.upper(ticker))
+
+    # delete all current data if the table does exist
+    delete_rows(conn, ticker)
+        
+    for x in range(0, len(stockData)):
+        dbRowEntry = []
+        dbRowEntry.append(stockData['Date'][x])
+        dbRowEntry.append(float(stockData['Open'][x]))
+        dbRowEntry.append(float(stockData['High'][x]))
+        dbRowEntry.append(float(stockData['Low'][x]))
+        dbRowEntry.append(float(stockData['Close'][x]))
+        dbRowEntry.append(int(stockData['Volume'][x]))
+
+        create_row(conn, ticker, dbRowEntry)
+
 # inserts a new row of data into the specified table
 # params are connection object, ticker, entry (a python list)
 def create_row(conn, ticker, entry):
@@ -89,3 +111,4 @@ def update_cell(conn, ticker, date, close):
     cur = conn.cursor()
     cur.execute("UPDATE " + ticker + " SET close=? WHERE date=?",(close,date,))
     conn.commit()
+    
