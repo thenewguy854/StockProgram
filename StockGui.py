@@ -11,6 +11,7 @@ import time
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 import sys
+import database_module as db
 
 
 # create main window
@@ -34,6 +35,13 @@ class StockGui(QMainWindow):
         # we will use this variable to delete the chart and display another
         # when the user selects a different ticker
         self.chartDisplayed = False;
+
+        # establish a connection to the database
+        try:
+            self.dbConn = db.create_connection('stocksDB.db')
+        except Exception as e:
+            print("Unable to establish connection to database")
+            print(e)
 
         # the central widget will have two smaller widgets inside
 
@@ -68,6 +76,7 @@ class StockGui(QMainWindow):
                     
         self.leftMainLayout.addWidget(self.chartWidget)
 
+    """ 99% of what goes into making the candlestick chart is in this function """
     def updateCandleChart(self):
         # create the actual QChart that will display the candlestick chart
         self.candleChart = QChart()
@@ -354,8 +363,23 @@ class StockGui(QMainWindow):
             
         self.rightMainLayout.addWidget(self.scrollBar)
 
+    """ Stuff that happens after hitting the go button """
     def goButtonAction(self):
-        self.getTickerPrices()
+
+        # get the currently selected ticker
+        ticker = self.tickerComboBox.currentText()
+
+        # get the stock prices
+        stockPrices = self.getTickerPrices(ticker)
+        
+        # put the prices in the database
+        db.insert_df(self.dbConn, ticker, stockPrices)
+
+        # now grab the same prices out of the database
+        stockPrices = db.select_all(self.dbConn, ticker)
+
+        # populate the table with this data
+        self.populateTable(stockPrices)
 
         # update the chart
         if self.chartDisplayed:
@@ -366,18 +390,29 @@ class StockGui(QMainWindow):
         
         self.updateCandleChart()
 
-    """ USED FOR TESTING BUTTONS. REMOVE LATER"""
-    def getTickerPrices(self):
+    """ gets and returns a dataframe of stock prices for a given ticker """
+    def getTickerPrices(self, ticker):
 
         # get today's date
 
         todayDate = date.today()
-        lastYearDate = todayDate - relativedelta(years=1)
+        todayDate = todayDate + relativedelta(days=1)
+        lastYearDate = todayDate - relativedelta(years=1, days=1)
 
         todayDate = todayDate.strftime('%d-%m-%Y')
         lastYearDate = lastYearDate.strftime('%d-%m-%Y')
 
-        stockData = getYahooData(self.tickerComboBox.currentText(), lastYearDate, todayDate, "1d")
+        # grab a year's worth of data
+        stockData = getYahooData(ticker, lastYearDate, todayDate, "1d")
+
+        return stockData
+
+        # redraw the table corresponding to the number of rows that were returned in the dataframe
+        self.rightMainLayout.removeWidget(self.scrollBar) 
+        self.createPriceTableWidget(len(stockData)+1)
+
+    """ puts price data from the database into the table on the GUI """
+    def populateTable(self, stockData):
 
         # redraw the table corresponding to the number of rows that were returned in the dataframe
         self.rightMainLayout.removeWidget(self.scrollBar) 
@@ -408,8 +443,6 @@ class StockGui(QMainWindow):
                             
             rowNum += 6
             pandaRowNum -= 1 
-        
-
 
 
 

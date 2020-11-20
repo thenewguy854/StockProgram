@@ -77,7 +77,7 @@ def delete_table(conn, ticker):
 
 # takes a dataframe from YahooStockGrab.py
 # and inserts it into the database
-def insert_df(conn, ticker, data):
+def insert_df(conn, ticker, stockData):
 
     # create the table if it doesn't exist
     create_table(conn, str.upper(ticker))
