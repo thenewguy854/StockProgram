@@ -407,10 +407,6 @@ class StockGui(QMainWindow):
 
         return stockData
 
-        # redraw the table corresponding to the number of rows that were returned in the dataframe
-        self.rightMainLayout.removeWidget(self.scrollBar) 
-        self.createPriceTableWidget(len(stockData)+1)
-
     """ puts price data from the database into the table on the GUI """
     def populateTable(self, stockData):
 
@@ -442,7 +438,9 @@ class StockGui(QMainWindow):
             self.cellList[rowNum+5].setText(" " + str(stockData.loc[pandaRowNum][5]))
                             
             rowNum += 6
-            pandaRowNum -= 1 
+            pandaRowNum -= 1
+
+
 
 
 
