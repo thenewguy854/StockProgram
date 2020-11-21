@@ -5,13 +5,11 @@ from PyQt5.QtWidgets import QGridLayout, QVBoxLayout, QHBoxLayout
 from PyQt5.QtWidgets import QGraphicsView
 from PyQt5.QtChart import *
 from PyQt5.QtGui import QColor, QPainter
-from PyQt5 import QtCore
-from YahooStockGrab import getYahooData
+import sys
 import time
 from datetime import date, datetime
-from dateutil.relativedelta import relativedelta
-import sys
-import database_module as db
+from GuiController import GuiCtrl
+from PyQt5 import QtCore
 
 
 # create main window
@@ -31,21 +29,7 @@ class StockGui(QMainWindow):
         self.setCentralWidget(self.centralWidget)
         self.centralWidget.setLayout(self.generalLayout)
 
-        # a variable to set true if a chart has been displayed
-        # we will use this variable to delete the chart and display another
-        # when the user selects a different ticker
-        self.chartDisplayed = False;
-
-        # establish a connection to the database
-        try:
-            self.dbConn = db.create_connection('stocksDB.db')
-        except Exception as e:
-            print("Unable to establish connection to database")
-            print(e)
-
         # the central widget will have two smaller widgets inside
-
-
         # add leftWidget and rightWidget to central widget
 
         self.createLeftWidget()
@@ -73,15 +57,28 @@ class StockGui(QMainWindow):
         self.chartWidget.setFixedSize(625, 400)
         self.chartWidgetLayout = QVBoxLayout()
         self.chartWidget.setLayout(self.chartWidgetLayout)
+
+        # create the actual QChart that will display the candlestick chart
+        self.candleChart = QChart()
+
+        # hide the legend
+        self.candleChart.legend().setVisible(False)
+
+        # add the chart into a view
+        self.chartView = QChartView(self.candleChart)
+        self.chartView.setRenderHint(QPainter.Antialiasing)
+        self.chartView.setRubberBand(QChartView.RectangleRubberBand)
+    
+        self.chartWidgetLayout.addWidget(self.chartView)
                     
         self.leftMainLayout.addWidget(self.chartWidget)
 
-    """ 99% of what goes into making the candlestick chart is in this function """
-    def updateCandleChart(self):
-        # create the actual QChart that will display the candlestick chart
-        self.candleChart = QChart()
-        
-         # create the series of data that will hold the stock data
+    def updateChartSeries(self):
+
+        # remove all current series
+        self.candleChart.removeAllSeries()
+
+        # create a new series of data that will hold the stock data
         self.candleChartSeries = QCandlestickSeries()
         self.candleChartSeries.setIncreasingColor(QColor(0, 255, 0, 255)) #RGB+Alpha
         self.candleChartSeries.setDecreasingColor(QColor(255, 0, 0, 255))
@@ -100,16 +97,14 @@ class StockGui(QMainWindow):
             #ohlcList.append(self.cellList[x+5]) # Volume 
 
             self.candleChartSeries.append(candleChartSet)
-
-
-        # add the data series to the QChart widget
+        
         self.candleChart.addSeries(self.candleChartSeries)
         self.candleChart.setAnimationOptions(QChart.SeriesAnimations)
-        
+
         # create default axes for chart
         self.candleChart.createDefaultAxes()
 
-        # set the x axis
+        """# set the x axis as date (DOES NOT WORK YET)
 
         self.axisX = QDateTimeAxis()
         
@@ -132,19 +127,8 @@ class StockGui(QMainWindow):
         self.axisX.setRange(axisBegin, axisEnd)
         self.axisX.setFormat("yyyy-MM-dd")
 
-        #self.candleChart.setAxisX(self.axisX, self.candleChartSeries)
-
-        # hide the legend
-        self.candleChart.legend().setVisible(False)
-
-        # add the chart into a view
-        self.chartView = QChartView(self.candleChart)
-        self.chartView.setRenderHint(QPainter.Antialiasing)
-        self.chartView.setRubberBand(QChartView.RectangleRubberBand)
-
-    
-        self.chartWidgetLayout.addWidget(self.chartView)
-
+        self.candleChart.setAxisX(self.axisX, self.candleChartSeries) """
+            
     def createNewsWidget(self):
         self.newsWidget = QWidget()
         self.newsWidget.setFixedSize(625, 205)
@@ -230,8 +214,6 @@ class StockGui(QMainWindow):
         self.scanButtonWidget.setLayout(self.scanButtonWidgetLayout)
 
         self.scanButton = QPushButton("GO")
-        
-        self.scanButton.clicked.connect(self.goButtonAction)
 
         self.scanButton.setStyleSheet("font-size: 15px;")
 
@@ -253,12 +235,14 @@ class StockGui(QMainWindow):
 
         self.rightMainLayout.addWidget(self.predictedCloseWidget)
 
-    def createPriceTableWidget(self, dataframeRows=253):
+    def createPriceTableWidget(self):
 
         # we are using labels to represent the price tables
         # since it is easier than trying to use a custom QTableView
 
-        self.numberOfRows = dataframeRows
+        self.numberOfRows = 254 # number of trading days in 2020
+                                # this number might be different for other years
+                                # due to leap day
         numberOfCells = self.numberOfRows * 6 # 6 for the number of columns
         
         self.priceTableWidget = QWidget()
@@ -363,92 +347,14 @@ class StockGui(QMainWindow):
             
         self.rightMainLayout.addWidget(self.scrollBar)
 
-    """ Stuff that happens after hitting the go button """
-    def goButtonAction(self):
-
-        # get the currently selected ticker
-        ticker = self.tickerComboBox.currentText()
-
-        # get the stock prices
-        stockPrices = self.getTickerPrices(ticker)
-        
-        # put the prices in the database
-        db.insert_df(self.dbConn, ticker, stockPrices)
-
-        # now grab the same prices out of the database
-        stockPrices = db.select_all(self.dbConn, ticker)
-
-        # populate the table with this data
-        self.populateTable(stockPrices)
-
-        # update the chart
-        if self.chartDisplayed:
-            self.chartWidgetLayout.removeWidget(self.chartView)
-
-        # add chart to the chart widget
-        self.chartDisplayed = True
-        
-        self.updateCandleChart()
-
-    """ gets and returns a dataframe of stock prices for a given ticker """
-    def getTickerPrices(self, ticker):
-
-        # get today's date
-
-        todayDate = date.today()
-        todayDate = todayDate + relativedelta(days=1)
-        lastYearDate = todayDate - relativedelta(years=1, days=1)
-
-        todayDate = todayDate.strftime('%d-%m-%Y')
-        lastYearDate = lastYearDate.strftime('%d-%m-%Y')
-
-        # grab a year's worth of data
-        stockData = getYahooData(ticker, lastYearDate, todayDate, "1d")
-
-        return stockData
-
-    """ puts price data from the database into the table on the GUI """
-    def populateTable(self, stockData):
-
-        # redraw the table corresponding to the number of rows that were returned in the dataframe
-        self.rightMainLayout.removeWidget(self.scrollBar) 
-        self.createPriceTableWidget(len(stockData)+1)
-
-        # Set the date cells in the table
-
-        rowNum = 6 # start at the second row on the table
-        pandaRowNum = len(stockData)-1 
-        for x in range(self.numberOfRows-2, -1, -1):
-            # set date cells
-            self.cellList[rowNum].setText(" " + stockData.loc[pandaRowNum][0] + " ")
-
-            # set open cells
-            self.cellList[rowNum+1].setText("$" + str(stockData.loc[pandaRowNum][1]))
-
-            # set high cells
-            self.cellList[rowNum+2].setText("$" + str(stockData.loc[pandaRowNum][2]))
-
-            # set low cells
-            self.cellList[rowNum+3].setText("$" + str(stockData.loc[pandaRowNum][3]))
-
-            # set close cells
-            self.cellList[rowNum+4].setText("$" + str(stockData.loc[pandaRowNum][4]))
-
-            # set volume cells
-            self.cellList[rowNum+5].setText(" " + str(stockData.loc[pandaRowNum][5]))
-                            
-            rowNum += 6
-            pandaRowNum -= 1
-
-
-
-
 
 def main():
     """ Main function """
     stockProgram = QApplication([])
     stockGui = StockGui()
-    stockGui.show()
+    guiCtrl = GuiCtrl(stockGui)
+    # show the gui through the controller
+    guiCtrl.display()
 
     # execute Stock Program Application
     sys.exit(stockProgram.exec())
