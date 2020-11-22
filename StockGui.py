@@ -116,7 +116,7 @@ class StockGui(QMainWindow):
             self.candleChartSeries.append(candleChartSet)
         
         self.candleChart.addSeries(self.candleChartSeries)
-        self.candleChart.setAnimationOptions(QChart.SeriesAnimations)
+        #self.candleChart.setAnimationOptions(QChart.SeriesAnimations)
 
         # create default axes for chart
         self.candleChart.createDefaultAxes()
@@ -163,7 +163,19 @@ class StockGui(QMainWindow):
         if(self.mousePressed):
             newMouseXPos = e.x()
             newMouseYPos = e.y()
-            if newMouseXPos < self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
+            if newMouseXPos < self.mousePrevXPos and newMouseYPos == self.mousePrevYPos:
+                # moving right
+                self.candleChart.scroll(20, 0)
+            elif newMouseXPos > self.mousePrevXPos and newMouseYPos == self.mousePrevYPos:
+                # moving left
+                self.candleChart.scroll(-20, 0)
+            elif newMouseXPos == self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
+                # moving down
+                self.candleChart.scroll(0, -20)
+            elif newMouseXPos == self.mousePrevXPos and newMouseYPos > self.mousePrevYPos:
+                # moving up
+                self.candleChart.scroll(0, 20)
+            elif newMouseXPos < self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
                 # moving left up diagonal
                 self.candleChart.scroll(20, -20)
             elif newMouseXPos > self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
@@ -300,7 +312,7 @@ class StockGui(QMainWindow):
         # we are using labels to represent the price tables
         # since it is easier than trying to use a custom QTableView
 
-        self.numberOfRows = 254 # number of trading days in 2020
+        self.numberOfRows = 253 # number of trading days in 2020
                                 # this number might be different for other years
                                 # due to leap day
         numberOfCells = self.numberOfRows * 6 # 6 for the number of columns
