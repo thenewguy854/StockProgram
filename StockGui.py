@@ -10,6 +10,7 @@ import time
 from datetime import date, datetime
 from GuiController import GuiCtrl
 from PyQt5 import QtCore
+import numpy as np
 
 
 # create main window
@@ -34,6 +35,11 @@ class StockGui(QMainWindow):
 
         self.createLeftWidget()
         self.createRightWidget()
+
+        # some variables to help with the candlestick panning
+        self.mousePressed = False
+        self.mousePrevXPos = None
+        self.mousePrevYPos = None
 
     """ Creates the left main widget that holds
         the chart widget and the news widget """
@@ -67,7 +73,18 @@ class StockGui(QMainWindow):
         # add the chart into a view
         self.chartView = QChartView(self.candleChart)
         self.chartView.setRenderHint(QPainter.Antialiasing)
-        self.chartView.setRubberBand(QChartView.RectangleRubberBand)
+
+        # handle moust moving events when we do start tracking it
+        self.chartView.mouseMoveEvent = self.chartMouseMoveEventHandler
+
+        # handle mouse wheel events
+        self.chartView.wheelEvent = self.chartMouseWheelEventHandler
+
+        # handle mouse press events
+        self.chartView.mousePressEvent = self.chartMousePressEventHandler
+
+        # handle mouse release events
+        self.chartView.mouseReleaseEvent = self.chartMouseReleaseEventHandler
     
         self.chartWidgetLayout.addWidget(self.chartView)
                     
@@ -104,6 +121,8 @@ class StockGui(QMainWindow):
         # create default axes for chart
         self.candleChart.createDefaultAxes()
 
+        self.candleChart.axes()[0].setGridLineVisible(False)
+
         """# set the x axis as date (DOES NOT WORK YET)
 
         self.axisX = QDateTimeAxis()
@@ -128,7 +147,48 @@ class StockGui(QMainWindow):
         self.axisX.setFormat("yyyy-MM-dd")
 
         self.candleChart.setAxisX(self.axisX, self.candleChartSeries) """
-            
+
+    """ Controls how pressing the mouse button down and moving the
+        mouse makes the chart move """
+    def chartMousePressEventHandler(self, e):
+        self.mousePressed = True
+        self.mousePrevXPos = e.x()
+        self.mousePrevYPos = e.y()
+
+    def chartMouseReleaseEventHandler(self, e):
+        self.mousePressed = False
+
+    def chartMouseMoveEventHandler(self, e):
+        
+        if(self.mousePressed):
+            newMouseXPos = e.x()
+            newMouseYPos = e.y()
+            if newMouseXPos < self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
+                # moving left up diagonal
+                self.candleChart.scroll(20, -20)
+            elif newMouseXPos > self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
+                # moving right up diagonal
+                self.candleChart.scroll(-20, -20)
+            elif newMouseXPos < self.mousePrevXPos and newMouseYPos > self.mousePrevYPos:
+                # moving left down diagonal
+                self.candleChart.scroll(20, 20)
+            elif newMouseXPos > self.mousePrevXPos and newMouseYPos > self.mousePrevYPos:
+                # moving right down diagonal
+                self.candleChart.scroll(-20, 20)
+
+            self.mousePrevXPos = newMouseXPos
+            self.mousePrevYPos = newMouseYPos
+
+
+    """ Controls how the mouse wheel effects chart zoom """
+    def chartMouseWheelEventHandler(self, e):
+        # positive number means zoom in
+        if e.angleDelta().y() > 0:
+            self.candleChart.zoom((e.angleDelta().y() / 120) + .001)
+        elif e.angleDelta().y() < 0:
+            # negative number means zoom out
+            self.candleChart.zoom((e.angleDelta().y() / 120) + 1.9)
+                    
     def createNewsWidget(self):
         self.newsWidget = QWidget()
         self.newsWidget.setFixedSize(625, 205)
