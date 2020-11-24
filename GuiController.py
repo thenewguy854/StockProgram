@@ -204,7 +204,7 @@ class GoButtonThread(QThread):
 
 """ This thread starts when the application is launched and runs until the user
     closes the program. The thread reaches out to Google Finance to update
-    the S&P 500, DOW 30, and NASDAQ stock indices every 5 seconds """
+    the S&P 500, DOW 30, and NASDAQ stock indices every few seconds """
 class IndexThread(QThread):
 
     def __init__(self, ctrl):
