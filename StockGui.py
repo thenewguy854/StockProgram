@@ -26,13 +26,17 @@ class StockGui(QMainWindow):
         # set central widget and general layout
         # we will use a grid layout for the general layout
         self.generalLayout = QGridLayout()
+        self.generalLayout.setRowStretch(0, 1)
+        self.generalLayout.setRowStretch(1, 0)
         self.centralWidget = QWidget(self)
+        self.centralWidget.setStyleSheet("background-color: #FFFFFF;")
         self.setCentralWidget(self.centralWidget)
         self.centralWidget.setLayout(self.generalLayout)
 
-        # the central widget will have two smaller widgets inside
-        # add leftWidget and rightWidget to central widget
+        # the central widget will have three smaller widgets inside
+        # add leftWidget, rightWidget, and indexWidget to central widget
 
+        self.createIndexWidget()
         self.createLeftWidget()
         self.createRightWidget()
 
@@ -41,14 +45,45 @@ class StockGui(QMainWindow):
         self.mousePrevXPos = None
         self.mousePrevYPos = None
 
+    """ Creates the panel that displays information for
+        variaous market indices """
+
+    def createIndexWidget(self):
+        self.indexWidget = QWidget()
+        self.indexLayout = QHBoxLayout()
+        self.indexWidget.setLayout(self.indexLayout)
+        self.indexWidget.setStyleSheet("border: 3px solid black;")
+        self.indexWidget.setFixedSize(1142, 35)
+
+        self.indexLabelOne = QLabel("Dow Jones: Loading...")
+        self.indexLabelOne.setFixedSize(245, 20)
+        self.indexLabelOne.setStyleSheet("font-size: 14px;\
+                                          border: none;")
+
+        self.indexLabelTwo = QLabel("S&P 500: Loading...")
+        self.indexLabelTwo.setFixedSize(245, 20)
+        self.indexLabelTwo.setStyleSheet("font-size: 14px;\
+                                          border: none;")
+
+        self.indexLabelThree = QLabel("Nasdaq: Loading...")
+        self.indexLabelThree.setFixedSize(235, 20)
+        self.indexLabelThree.setStyleSheet("font-size: 14px;\
+                                            border: none;")
+
+        self.indexLayout.addWidget(self.indexLabelOne)
+        self.indexLayout.addWidget(self.indexLabelTwo)
+        self.indexLayout.addWidget(self.indexLabelThree)
+
+        self.generalLayout.addWidget(self.indexWidget, 0, 0)
+
     """ Creates the left main widget that holds
         the chart widget and the news widget """
     def createLeftWidget(self):
         self.leftMainWidget = QWidget()
         self.leftMainLayout = QVBoxLayout()
         self.leftMainWidget.setLayout(self.leftMainLayout)
-        self.leftMainWidget.setStyleSheet("border: 3px solid black;")
-        self.leftMainWidget.setFixedSize(645, 650)
+        self.leftMainWidget.setStyleSheet("border: None;")
+        self.leftMainWidget.setFixedSize(675, 625)
 
         # create chart widget
         self.createChartWidget()
@@ -56,16 +91,22 @@ class StockGui(QMainWindow):
         # create news widget
         self.createNewsWidget()
 
-        self.generalLayout.addWidget(self.leftMainWidget, 0, 0)
+        self.generalLayout.addWidget(self.leftMainWidget, 1, 0)
 
     def createChartWidget(self):
         self.chartWidget = QWidget()
-        self.chartWidget.setFixedSize(625, 400)
+        self.chartWidget.setFixedSize(655, 400)
         self.chartWidgetLayout = QVBoxLayout()
         self.chartWidget.setLayout(self.chartWidgetLayout)
+        self.chartWidget.setStyleSheet("border:3px solid black;")
+
+        self.chartTheme = QChart.ChartThemeLight
 
         # create the actual QChart that will display the candlestick chart
         self.candleChart = QChart()
+
+        # set the theme of the chart
+        self.candleChart.setTheme(self.chartTheme)
 
         # hide the legend
         self.candleChart.legend().setVisible(False)
@@ -159,34 +200,36 @@ class StockGui(QMainWindow):
         self.mousePressed = False
 
     def chartMouseMoveEventHandler(self, e):
+
+        panSpeed = 10
         
         if(self.mousePressed):
             newMouseXPos = e.x()
             newMouseYPos = e.y()
             if newMouseXPos < self.mousePrevXPos and newMouseYPos == self.mousePrevYPos:
                 # moving right
-                self.candleChart.scroll(20, 0)
+                self.candleChart.scroll(panSpeed, 0)
             elif newMouseXPos > self.mousePrevXPos and newMouseYPos == self.mousePrevYPos:
                 # moving left
-                self.candleChart.scroll(-20, 0)
+                self.candleChart.scroll(panSpeed*-1, 0)
             elif newMouseXPos == self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
                 # moving down
-                self.candleChart.scroll(0, -20)
+                self.candleChart.scroll(0, panSpeed*-1)
             elif newMouseXPos == self.mousePrevXPos and newMouseYPos > self.mousePrevYPos:
                 # moving up
-                self.candleChart.scroll(0, 20)
+                self.candleChart.scroll(0, panSpeed)
             elif newMouseXPos < self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
                 # moving left up diagonal
-                self.candleChart.scroll(20, -20)
+                self.candleChart.scroll(panSpeed, panSpeed*-1)
             elif newMouseXPos > self.mousePrevXPos and newMouseYPos < self.mousePrevYPos:
                 # moving right up diagonal
-                self.candleChart.scroll(-20, -20)
+                self.candleChart.scroll(panSpeed*-1, panSpeed*-1)
             elif newMouseXPos < self.mousePrevXPos and newMouseYPos > self.mousePrevYPos:
                 # moving left down diagonal
-                self.candleChart.scroll(20, 20)
+                self.candleChart.scroll(panSpeed, panSpeed)
             elif newMouseXPos > self.mousePrevXPos and newMouseYPos > self.mousePrevYPos:
                 # moving right down diagonal
-                self.candleChart.scroll(-20, 20)
+                self.candleChart.scroll(panSpeed*-1, panSpeed)
 
             self.mousePrevXPos = newMouseXPos
             self.mousePrevYPos = newMouseYPos
@@ -203,7 +246,8 @@ class StockGui(QMainWindow):
                     
     def createNewsWidget(self):
         self.newsWidget = QWidget()
-        self.newsWidget.setFixedSize(625, 205)
+        self.newsWidget.setFixedSize(655, 205)
+        self.newsWidget.setStyleSheet("border: 3px solid black;")
 
         self.leftMainLayout.addWidget(self.newsWidget)
         
@@ -214,19 +258,20 @@ class StockGui(QMainWindow):
         self.rightMainLayout = QVBoxLayout()
         self.rightMainWidget.setLayout(self.rightMainLayout)
         self.rightMainWidget.setStyleSheet("border: 3px solid black;")
-        self.rightMainWidget.setFixedSize(455, 650)
+        self.rightMainWidget.setFixedSize(455, 605)
 
         self.createTickerSelectorWidget()
         self.createPredictedCloseWidget()
         self.createPriceTableWidget()
 
-        self.generalLayout.addWidget(self.rightMainWidget, 0, 1)
+        self.generalLayout.addWidget(self.rightMainWidget, 1, 1)
 
     def createTickerSelectorWidget(self):
         self.tickerSelectorWidget = QWidget()
         self.tickerSelectorWidget.setFixedSize(430, 50)
         self.tickerSelectorLayout = QHBoxLayout()
         self.tickerSelectorWidget.setLayout(self.tickerSelectorLayout)
+        self.tickerSelectorWidget.setStyleSheet("border: None;")
 
         # ticker combobox
         self.createTickerComboBoxWidget()
@@ -242,6 +287,7 @@ class StockGui(QMainWindow):
         self.tickerComboBoxWidget.setFixedSize(170, 40)
         self.tickerComboBoxWidgetLayout = QHBoxLayout() # this can really just be any layout so we can add others widgets
         self.tickerComboBoxWidget.setLayout(self.tickerComboBoxWidgetLayout)
+        self.tickerComboBoxWidget.setStyleSheet("border: None;")
         
          # ticker combobox
         self.tickerComboBox = QComboBox()
@@ -273,7 +319,8 @@ class StockGui(QMainWindow):
         self.tickerComboBox.addItems(tickerList)
         self.tickerComboBox.setEditable(True)
 
-        self.tickerComboBox.setStyleSheet("font-size: 15px;")
+        self.tickerComboBox.setStyleSheet("font-size: 15px;\
+                                           border: 3px solid black;")
         
         self.tickerComboBoxWidgetLayout.addWidget(self.tickerComboBox)
         
@@ -287,7 +334,8 @@ class StockGui(QMainWindow):
 
         self.scanButton = QPushButton("GO")
 
-        self.scanButton.setStyleSheet("font-size: 15px;")
+        self.scanButton.setStyleSheet("font-size: 15px;\
+                                       border: 3px solid black;")
 
         self.scanButtonWidgetLayout.addWidget(self.scanButton)
 
@@ -298,10 +346,12 @@ class StockGui(QMainWindow):
         self.predictedCloseWidget.setFixedSize(430 , 50)
         self.predictedCloseWidgetLayout = QHBoxLayout()
         self.predictedCloseWidget.setLayout(self.predictedCloseWidgetLayout)
+        self.predictedCloseWidget.setStyleSheet("border: None;")
         
         self.predictedLabel = QLabel("Next Predicted Close: $5.00 (-0.02)")
         self.predictedLabel.setStyleSheet("font-size: 15px; \
-                                           padding-left: 70px;")
+                                           padding-left: 70px;\
+                                           border: 3px solid black;")
 
         self.predictedCloseWidgetLayout.addWidget(self.predictedLabel)
 
@@ -425,6 +475,10 @@ def main():
     stockProgram = QApplication([])
     stockGui = StockGui()
     guiCtrl = GuiCtrl(stockGui)
+
+    # this line tells the program to stop the running threads
+    # before exiting
+    stockProgram.aboutToQuit.connect(guiCtrl.stopThreads)
     # show the gui through the controller
     guiCtrl.display()
 

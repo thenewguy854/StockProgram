@@ -1,11 +1,13 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
-from YahooStockGrab import getYahooData
+from YahooStockGrab import getYahooData, getIndicesGoogle
 import database_module as db
 from PyQt5.QtChart import *
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5 import QtCore
+import time
+import random
 
 """ Controller class that is primarily used to
     handle the different threads that run in the application """
@@ -23,6 +25,10 @@ class GuiCtrl():
 
         # create instances of each thread
         self.goButtonThread = GoButtonThread(gui, self)
+        self.indexThread = IndexThread(self)
+
+        # start certain threads at runtime
+        self.indexThread.start()
 
         self.connectSignals()
 
@@ -39,6 +45,16 @@ class GuiCtrl():
 
     def startGoButtonThread(self):
         self.goButtonThread.start()
+        self.goButtonThread.quit()
+
+    """ This function is called when the user exits the application
+        to ensure the each thread we have running is stopped. If not, it
+        will continue to run. """
+    def stopThreads(self):
+        if(self.indexThread.isRunning()):
+            self.indexThread.running = False
+            self.indexThread.quit()
+        
         
 
     """ gets and returns a dataframe of stock prices for a given ticker """
@@ -85,6 +101,75 @@ class GuiCtrl():
                             
             rowNum += 6
             pandaRowNum -= 1
+
+    def updateIndexLabels(self, data):
+
+        # set this to determine what color the labels will flash
+        # each time they are updated
+        flashColor = "#999900"
+
+        self.gui.indexLabelOne.setText(data[0])
+        self.gui.indexLabelTwo.setText(data[1])
+        self.gui.indexLabelThree.setText(data[2])
+
+        # decide on the color of the label now
+        labelOneColor = None
+        labelTwoColor = None
+        labelThreeColor = None
+
+        if(data[0][3][0] == "+"):
+            labelOneColor = "#009900"
+        else:
+            labelOneColor = "#990000"
+
+        if(data[1][3][0] == "+"):
+            labelTwoColor = "#009900"
+        else:
+            labelTwoColor = "#990000"
+
+        if(data[2][3][0] == "+"):
+            labelThreeColor = "#009900"
+        else:
+            labelThreeColor = "#990000"
+
+        # update the css for each label to give them a simple flash animation
+        self.gui.indexLabelOne.setStyleSheet("font-size: 14px;\
+                                              border: none;\
+                                              background-color: #FFFFFF;\
+                                              color: " + flashColor)
+
+        self.gui.indexLabelTwo.setStyleSheet("font-size: 14px;\
+                                              border: none;\
+                                              background-color: #FFFFFF;\
+                                              color: " + flashColor)
+
+        self.gui.indexLabelThree.setStyleSheet("font-size: 14px;\
+                                                border: none;\
+                                                background-color: #FFFFFF;\
+                                                color: " + flashColor)
+
+        time.sleep(.5)
+
+        # change them back to either red or green
+        # the way we will determine this is using the increase amount
+        # that google provides for us. They put a '+' for green and a
+        # '-' for red
+
+        self.gui.indexLabelOne.setStyleSheet("font-size: 14px;\
+                                              border: none;\
+                                              background-color: #FFFFFF;\
+                                              color: " + labelOneColor)
+
+        self.gui.indexLabelTwo.setStyleSheet("font-size: 14px;\
+                                              border: none;\
+                                              background-color: #FFFFFF;\
+                                              color: " + labelTwoColor)
+
+        self.gui.indexLabelThree.setStyleSheet("font-size: 14px;\
+                                                border: none;\
+                                                background-color: #FFFFFF;\
+                                                color: " + labelThreeColor)
+        
     
 """ Thread that handles making the initial price data pull,
     updating the database and price table,
@@ -116,6 +201,37 @@ class GoButtonThread(QThread):
         self.controller.populateTable(stockPrices)
 
         self.updateChartSig.emit()
+
+""" This thread starts when the application is launched and runs until the user
+    closes the program. The thread reaches out to Google Finance to update
+    the S&P 500, DOW 30, and NASDAQ stock indices every 5 seconds """
+class IndexThread(QThread):
+
+    def __init__(self, ctrl):
+        QThread.__init__(self)
+        self.controller = ctrl
+        self.running = True
+
+    def run(self):
+        while(self.running):
+            # sleep for a random time between 10 and 20 seconds so google
+            # thinks we are a bit more human
+            sleepTime = random.randint(10, 20)
+            print("Sleep time: " + str(sleepTime))
+            time.sleep(sleepTime)
+
+            
+            # get the updated information
+            try:
+                indexData = getIndicesGoogle()
+            except Exception as e:
+                print("Could not pull google data")
+                print(e)
+
+            # do something with the data
+            if(indexData):
+                self.controller.updateIndexLabels(indexData)
+
 
         
 
