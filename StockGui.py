@@ -52,7 +52,8 @@ class StockGui(QMainWindow):
         self.indexWidget = QWidget()
         self.indexLayout = QHBoxLayout()
         self.indexWidget.setLayout(self.indexLayout)
-        self.indexWidget.setStyleSheet("border: 3px solid black;")
+        self.indexWidget.setStyleSheet("border: 3px solid black;\
+                                        margin-left: 9px;")
         self.indexWidget.setFixedSize(1142, 35)
 
         self.indexLabelOne = QLabel("Dow Jones: Loading...")

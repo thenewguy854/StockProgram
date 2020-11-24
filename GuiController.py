@@ -217,7 +217,6 @@ class IndexThread(QThread):
             # sleep for a random time between 10 and 20 seconds so google
             # thinks we are a bit more human
             sleepTime = random.randint(10, 20)
-            print("Sleep time: " + str(sleepTime))
             time.sleep(sleepTime)
 
             
