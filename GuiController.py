@@ -18,6 +18,9 @@ class GuiCtrl():
         # do things with it
         self.gui = gui
 
+        # establish a connection to the database
+        self.dbConn = db.create_connection('stocksDB.db')
+
         # a variable to set true if a chart has been displayed
         # we will use this variable to delete the chart and display another
         # when the user selects a different ticker
@@ -41,7 +44,7 @@ class GuiCtrl():
         self.gui.scanButton.clicked.connect(self.startGoButtonThread)
         # connect the goButtonThread signal to update the chart with
         # the function that actually updates the chart
-        self.goButtonThread.updateChartSig.connect(self.gui.updateChartSeries)
+        self.goButtonThread.updateTableSig.connect(self.populateTable)
 
     def startGoButtonThread(self):
         self.goButtonThread.start()
@@ -75,32 +78,80 @@ class GuiCtrl():
         return stockData
 
     """ puts price data from the database into the table on the GUI """
-    def populateTable(self, stockData):
+    def populateTable(self, ticker):
+
+        # clear what is currently in the table
+        self.clearTable()
+
+        # get the stockData from the database
+        stockData = db.select_all(self.dbConn, ticker)
 
         # Set the date cells in the table
         rowNum = 6 # start at the second row on the table
         pandaRowNum = len(stockData)-1
-        for x in range(self.gui.numberOfRows-2, -1, -1):
+        for x in range(pandaRowNum, -1, -1):
             # set date cells
+            # first make visible in case we've previously made it unvisible
+            self.gui.cellList[rowNum].setVisible(True)
             self.gui.cellList[rowNum].setText(" " + stockData.loc[pandaRowNum][0] + " ")
 
             # set open cells
+            self.gui.cellList[rowNum+1].setVisible(True)
             self.gui.cellList[rowNum+1].setText("$" + str(stockData.loc[pandaRowNum][1]))
 
             # set high cells
+            self.gui.cellList[rowNum+2].setVisible(True)
             self.gui.cellList[rowNum+2].setText("$" + str(stockData.loc[pandaRowNum][2]))
 
             # set low cells
+            self.gui.cellList[rowNum+3].setVisible(True)
             self.gui.cellList[rowNum+3].setText("$" + str(stockData.loc[pandaRowNum][3]))
 
             # set close cells
+            self.gui.cellList[rowNum+4].setVisible(True)
             self.gui.cellList[rowNum+4].setText("$" + str(stockData.loc[pandaRowNum][4]))
 
             # set volume cells
+            self.gui.cellList[rowNum+5].setVisible(True)
             self.gui.cellList[rowNum+5].setText(" " + str(stockData.loc[pandaRowNum][5]))
                             
             rowNum += 6
             pandaRowNum -= 1
+
+        # for the cells that we did not set a value for
+        # make them disappear
+        pandaRowNum = len(stockData)
+        for x in range(pandaRowNum, 254):
+
+            # set date cells
+            self.gui.cellList[rowNum].setVisible(False)
+
+            # set open cells
+            self.gui.cellList[rowNum+1].setVisible(False)
+
+            # set high cells
+            self.gui.cellList[rowNum+2].setVisible(False)
+
+            # set low cells
+            self.gui.cellList[rowNum+3].setVisible(False)
+
+            # set close cells
+            self.gui.cellList[rowNum+4].setVisible(False)
+
+            # set volume cells
+            self.gui.cellList[rowNum+5].setVisible(False)
+                            
+            rowNum += 6
+
+
+        # update the candlestick chart
+        self.gui.updateChartSeries()
+
+    def clearTable(self):
+
+        for x in range(6, self.gui.numberOfCells):
+            self.gui.cellList[x].setText("")
+
 
     def updateIndexLabels(self, data):
 
@@ -172,11 +223,11 @@ class GuiCtrl():
         
     
 """ Thread that handles making the initial price data pull,
-    updating the database and price table,
-    and drawing the CandleStick chart """
+    updating the database. It then sends the signal to let the
+    controller know its time to update the price table and chart"""
 class GoButtonThread(QThread):
 
-    updateChartSig = pyqtSignal()
+    updateTableSig = pyqtSignal(str)
 
     def __init__(self, gui, ctrl):
         QThread.__init__(self)
@@ -194,13 +245,8 @@ class GoButtonThread(QThread):
         # put the prices in the database
         db.insert_df(self.dbConn, ticker, stockPrices)
 
-        # now grab the same prices out of the database
-        stockPrices = db.select_all(self.dbConn, ticker)
-
-        # populate the table with this data
-        self.controller.populateTable(stockPrices)
-
-        self.updateChartSig.emit()
+        # send the signal to update the table
+        self.updateTableSig.emit(ticker)
 
 """ This thread starts when the application is launched and runs until the user
     closes the program. The thread reaches out to Google Finance to update

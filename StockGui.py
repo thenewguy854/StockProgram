@@ -57,7 +57,7 @@ class StockGui(QMainWindow):
         self.indexWidget.setFixedSize(1142, 35)
 
         self.indexLabelOne = QLabel("Dow Jones: Loading...")
-        self.indexLabelOne.setFixedSize(245, 20)
+        self.indexLabelOne.setFixedSize(255, 20)
         self.indexLabelOne.setStyleSheet("font-size: 14px;\
                                           border: none;")
 
@@ -144,18 +144,20 @@ class StockGui(QMainWindow):
 
         # create the set structure that holds one OHLCV day of data
         self.candleChartSet = QCandlestickSet()
-
-        for x in range(6, len(self.cellList), 6):
+        
+        for x in range(len(self.cellList)-6, 6, -6):
             candleChartSet = QCandlestickSet()
             # Date as timestamp
-            candleChartSet.setTimestamp(float(time.mktime(datetime.strptime(self.cellList[x].text(), " %Y-%m-%d ").timetuple())))
-            candleChartSet.setOpen(float(self.cellList[x+1].text()[1:])) # Open
-            candleChartSet.setHigh(float(self.cellList[x+2].text()[1:])) # High
-            candleChartSet.setLow(float(self.cellList[x+3].text()[1:])) # Low
-            candleChartSet.setClose(float(self.cellList[x+4].text()[1:])) # Close
-            #ohlcList.append(self.cellList[x+5]) # Volume 
+            # only add the row of data if it is not blank
+            if not(self.cellList[x].text() == ""):
+                candleChartSet.setTimestamp(float(time.mktime(datetime.strptime(self.cellList[x].text(), " %Y-%m-%d ").timetuple())))
+                candleChartSet.setOpen(float(self.cellList[x+1].text()[1:])) # Open
+                candleChartSet.setHigh(float(self.cellList[x+2].text()[1:])) # High
+                candleChartSet.setLow(float(self.cellList[x+3].text()[1:])) # Low
+                candleChartSet.setClose(float(self.cellList[x+4].text()[1:])) # Close
+                #ohlcList.append(self.cellList[x+5]) # Volume 
 
-            self.candleChartSeries.append(candleChartSet)
+                self.candleChartSeries.append(candleChartSet)
         
         self.candleChart.addSeries(self.candleChartSeries)
         #self.candleChart.setAnimationOptions(QChart.SeriesAnimations)
@@ -164,6 +166,8 @@ class StockGui(QMainWindow):
         self.candleChart.createDefaultAxes()
 
         self.candleChart.axes()[0].setGridLineVisible(False)
+
+        self.candleChart.update()
 
         """# set the x axis as date (DOES NOT WORK YET)
 
@@ -363,10 +367,9 @@ class StockGui(QMainWindow):
         # we are using labels to represent the price tables
         # since it is easier than trying to use a custom QTableView
 
-        self.numberOfRows = 253 # number of trading days in 2020
-                                # this number might be different for other years
-                                # due to leap day
-        numberOfCells = self.numberOfRows * 6 # 6 for the number of columns
+        self.numberOfRows = 255
+        
+        self.numberOfCells = self.numberOfRows * 6 # 6 for the number of columns
         
         self.priceTableWidget = QWidget()
         self.priceTableWidget.setFixedSize(415, 9000)
@@ -393,7 +396,7 @@ class StockGui(QMainWindow):
         self.cellList = []
 
         # create cells
-        for x in range(0, numberOfCells):
+        for x in range(0, self.numberOfCells):
             self.cellList.append(QLabel())
             self.cellList[x].setAlignment(QtCore.Qt.AlignCenter)
 
@@ -423,7 +426,7 @@ class StockGui(QMainWindow):
 
         # add text to the rest of the cells for testing purposes
         cellCount = 0 # used to figure out what cell we are on
-        for x in range(6, numberOfCells):
+        for x in range(6, self.numberOfCells):
             if not cellCount == 6:
                 if cellCount == 0:
                     # date cell
@@ -451,14 +454,14 @@ class StockGui(QMainWindow):
 
         # set the style for the rest of the cells
 
-        for x in range(6, numberOfCells):
+        for x in range(6, self.numberOfCells):
             self.cellList[x].setStyleSheet("font-size: 14px;\
                                              border-left: 3px solid black;\
                                              border-bottom: 3px solid black;")
         # add the cells to the grid layout
         rowNumber = 0
         columnNumber = 0
-        for x in range(0, numberOfCells):
+        for x in range(0, self.numberOfCells):
             self.priceTableWidgetLayout.addWidget(self.cellList[x], rowNumber, columnNumber)
             if not columnNumber == 5:
                 columnNumber += 1
