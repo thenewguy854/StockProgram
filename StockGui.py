@@ -139,25 +139,28 @@ class StockGui(QMainWindow):
 
         # create a new series of data that will hold the stock data
         self.candleChartSeries = QCandlestickSeries()
+        self.candleChartSeries.setMinimumColumnWidth(4)
         self.candleChartSeries.setIncreasingColor(QColor(0, 255, 0, 255)) #RGB+Alpha
         self.candleChartSeries.setDecreasingColor(QColor(255, 0, 0, 255))
 
         # create the set structure that holds one OHLCV day of data
-        self.candleChartSet = QCandlestickSet()
-        
+
         for x in range(len(self.cellList)-6, 6, -6):
-            candleChartSet = QCandlestickSet()
+            self.candleChartSet = QCandlestickSet()
             # Date as timestamp
             # only add the row of data if it is not blank
             if not(self.cellList[x].text() == ""):
-                candleChartSet.setTimestamp(float(time.mktime(datetime.strptime(self.cellList[x].text(), " %Y-%m-%d ").timetuple())))
-                candleChartSet.setOpen(float(self.cellList[x+1].text()[1:])) # Open
-                candleChartSet.setHigh(float(self.cellList[x+2].text()[1:])) # High
-                candleChartSet.setLow(float(self.cellList[x+3].text()[1:])) # Low
-                candleChartSet.setClose(float(self.cellList[x+4].text()[1:])) # Close
+                self.candleChartSet.setTimestamp(float(time.mktime(datetime.strptime(self.cellList[x].text(), " %Y-%m-%d ").timetuple())))
+                self.candleChartSet.setOpen(float(self.cellList[x+1].text()[1:])) # Open
+                self.candleChartSet.setHigh(float(self.cellList[x+2].text()[1:])) # High
+                self.candleChartSet.setLow(float(self.cellList[x+3].text()[1:])) # Low
+                self.candleChartSet.setClose(float(self.cellList[x+4].text()[1:])) # Close
+
+                # set the hovered signal to this candlestick
+                self.candleChartSet.hovered.connect(self.candleStickMouseHoverEventHandler)
                 #ohlcList.append(self.cellList[x+5]) # Volume 
 
-                self.candleChartSeries.append(candleChartSet)
+                self.candleChartSeries.append(self.candleChartSet)
         
         self.candleChart.addSeries(self.candleChartSeries)
         #self.candleChart.setAnimationOptions(QChart.SeriesAnimations)
@@ -194,6 +197,10 @@ class StockGui(QMainWindow):
 
         self.candleChart.setAxisX(self.axisX, self.candleChartSeries) """
 
+
+    def candleStickMouseHoverEventHandler(self):
+        print("Hovered")
+        
     """ Controls how pressing the mouse button down and moving the
         mouse makes the chart move """
     def chartMousePressEventHandler(self, e):

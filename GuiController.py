@@ -18,6 +18,8 @@ class GuiCtrl():
         # do things with it
         self.gui = gui
 
+        self.updateFlashColor = "#999900"
+
         # establish a connection to the database
         self.dbConn = db.create_connection('stocksDB.db')
 
@@ -29,6 +31,7 @@ class GuiCtrl():
         # create instances of each thread
         self.goButtonThread = GoButtonThread(gui, self)
         self.indexThread = IndexThread(self)
+        self.updateCloseThread = UpdateCloseThread(gui, self)
 
         # start certain threads at runtime
         self.indexThread.start()
@@ -45,10 +48,27 @@ class GuiCtrl():
         # connect the goButtonThread signal to update the chart with
         # the function that actually updates the chart
         self.goButtonThread.updateTableSig.connect(self.populateTable)
+        self.updateCloseThread.updateCloseSig.connect(self.updateTable)
 
     def startGoButtonThread(self):
         self.goButtonThread.start()
         self.goButtonThread.quit()
+        
+        if(self.updateCloseThread.isRunning()):
+            self.stopUpdateCloseThread()
+
+        self.startUpdateCloseThread()
+
+    def startUpdateCloseThread(self):
+        print("Starting update close thread")
+        self.updateCloseThread.running = True
+        self.updateCloseThread.start()
+
+    def stopUpdateCloseThread(self):
+        print("Stopping update close thread")
+        self.updateCloseThread.running = False
+        self.updateCloseThread.ticker = None
+        self.updateCloseThread.quit()
 
     """ This function is called when the user exits the application
         to ensure the each thread we have running is stopped. If not, it
@@ -57,14 +77,13 @@ class GuiCtrl():
         if(self.indexThread.isRunning()):
             self.indexThread.running = False
             self.indexThread.quit()
-        
-        
+            self.updateCloseThread.running = False
+            self.updateCloseThread.quit()
 
     """ gets and returns a dataframe of stock prices for a given ticker """
     def getTickerPrices(self, ticker):
 
         # get today's date
-
         todayDate = date.today()
         todayDate = todayDate + relativedelta(days=1)
         lastYearDate = todayDate - relativedelta(years=1, days=1)
@@ -75,6 +94,19 @@ class GuiCtrl():
         # grab a year's worth of data
         stockData = getYahooData(ticker, lastYearDate, todayDate, "1d")
         
+        return stockData
+
+    def getLastClose(self, ticker):
+
+        # get today's date
+        todayDate = date.today()
+        lastDate = todayDate - relativedelta(days=5)
+
+        todayDate = todayDate.strftime('%d-%m-%Y')
+        lastDate = lastDate.strftime('%d-%m-%Y')
+
+        stockData = getYahooData(ticker, lastDate, todayDate, "1d")
+
         return stockData
 
     """ puts price data from the database into the table on the GUI """
@@ -147,6 +179,14 @@ class GuiCtrl():
         # update the candlestick chart
         self.gui.updateChartSeries()
 
+    """ updates the close price of the last row in the table"""
+    def updateTable(self, ticker):
+        stockData = db.select_last_row(self.dbConn, ticker)
+
+        if(stockData[4] != self.gui.cellList[10].text()): 
+            self.gui.cellList[10].setText("$" + str(stockData[4]))
+        
+
     def clearTable(self):
 
         for x in range(6, self.gui.numberOfCells):
@@ -154,10 +194,6 @@ class GuiCtrl():
 
 
     def updateIndexLabels(self, data):
-
-        # set this to determine what color the labels will flash
-        # each time they are updated
-        flashColor = "#999900"
 
         self.gui.indexLabelOne.setText(data[0])
         self.gui.indexLabelTwo.setText(data[1])
@@ -187,17 +223,17 @@ class GuiCtrl():
         self.gui.indexLabelOne.setStyleSheet("font-size: 14px;\
                                               border: none;\
                                               background-color: #FFFFFF;\
-                                              color: " + flashColor)
+                                              color: " + self.updateFlashColor + ";")
 
         self.gui.indexLabelTwo.setStyleSheet("font-size: 14px;\
                                               border: none;\
                                               background-color: #FFFFFF;\
-                                              color: " + flashColor)
+                                              color: " + self.updateFlashColor + ";")
 
         self.gui.indexLabelThree.setStyleSheet("font-size: 14px;\
                                                 border: none;\
                                                 background-color: #FFFFFF;\
-                                                color: " + flashColor)
+                                                color: " + self.updateFlashColor + ";")
 
         time.sleep(.5)
 
@@ -247,6 +283,39 @@ class GoButtonThread(QThread):
 
         # send the signal to update the table
         self.updateTableSig.emit(ticker)
+
+
+class UpdateCloseThread(QThread):
+
+    updateCloseSig = pyqtSignal(str)
+    
+    def __init__(self, gui, ctrl):
+        QThread.__init__(self)
+        self.controller = ctrl
+        self.running = True
+        self.gui = gui
+        self.ticker = None
+
+    def run(self):
+        while(self.running):
+            time.sleep(30)
+            if(self.ticker == None):
+                self.ticker = self.gui.tickerComboBox.currentText()
+
+            try:
+                stockData = self.controller.getLastClose(self.ticker)
+
+                self.dbConn = db.create_connection('stocksDB.db')
+
+                # get the last row so we know which date to use
+                lastRow = db.select_last_row(self.dbConn, self.ticker)
+            
+                db.update_cell(self.dbConn, self.ticker, lastRow[0], stockData['Close'][3])
+
+                self.updateCloseSig.emit(self.ticker)
+            except Exception as e:
+                print("Unable to update last close")
+                print(e)
 
 """ This thread starts when the application is launched and runs until the user
     closes the program. The thread reaches out to Google Finance to update
