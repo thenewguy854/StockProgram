@@ -28,6 +28,13 @@ def select_all(conn, ticker):
     tableDF = pd.DataFrame(rows, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume'])
     return tableDF
 
+# selects and returns the last row for a ticker
+def select_last_row(conn, ticker):
+    cur = conn.cursor()
+    cur.execute('Select * FROM ' + ticker + ' ORDER BY ROWID DESC LIMIT 1;')
+    data = cur.fetchall()
+    return data[0]
+
 # selects a specific cell from a row identified by its date
 # parameters are connection object, ticker, cell, date
 # returns python data type
@@ -111,4 +118,5 @@ def update_cell(conn, ticker, date, close):
     cur = conn.cursor()
     cur.execute("UPDATE " + ticker + " SET close=? WHERE date=?",(close,date,))
     conn.commit()
+
     
